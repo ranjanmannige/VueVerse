@@ -1,0 +1,594 @@
+<template>
+  <div class="inner-card"  id="divGraph" ref="divGraph" style="padding:5px !important; margin:0px !important;">
+    <div class='card-fixed'  id="divNonGraph" ref="divNonGraph">
+      <span v-on:click="zoomFit(.95,500)">
+        <simpleButton content='<i class="fas fa-expand-alt"></i>' title='Fit network to frame'/>
+      </span>
+      <multipleButton v-bind:controllingVariable="graphToLoad"
+                    v-bind:graphToLoadOptions="graphToLoadOptions"
+                    v-on:update-controller="graphToLoad = $event"
+                    xheader="GRAPHS"
+                    title='Select graph type to display'/>
+      
+      <graphControls v-bind:parentForceProperties="forceProperties"
+                     v-on:update-force-properties="forceProperties=$event" />
+      
+    </div>
+    <!-- <div class='card__scroll' id="divGraph" style='margin:0px; padding:0px; background: red;'>   -->
+    <div class='card-fixed' style="text-align:center; margin:0px  !important; padding:0px !important; ">
+      <!-- <span v-on:click="test()">test</span> -->
+      <svg width="100%" id="graphSvg"></svg>
+    </div>
+  </div>
+</template>
+
+
+<script>
+import JQuery from 'jquery';
+import * as d3 from 'd3'; // from https://levelup.gitconnected.com/d3-js-and-vue-js-7a6a721eb79f
+
+//var jsnx = require('jsnetworkx');
+import cytoscape from 'cytoscape'; // OR var cytoscape = require('cytoscape');
+
+import * as jLouvain from '../../assets/js/jLouvain.js'
+
+import { select } from 'd3-selection';
+import transition from 'd3-transition';
+
+import VueSlider from 'vue-slider-component'
+import 'vue-slider-component/theme/default.css'
+
+const greadability = require('../../assets/js/greadability.js');
+
+import toggleButton from './buttonToggle.vue';
+import binaryButton from './buttonBinary.vue';
+import simpleButton from './buttonSimple.vue';
+import multipleButton from './buttonMultiple.vue';
+import graphControls from './graphControls.vue';
+
+import exampleGraphObject from './miserables.json';
+
+export default {
+  data() {
+    return {
+      root:null,
+      graph:null,
+      node:null,
+      link:null,
+      lables:null,
+      simulation: null,
+      graphToLoad:'?',
+      graphToLoadOptions: ['Rels','Terms','<i class="fas fa-book"></i>','?'],
+      value: 0.5,
+      jsonFn: "/miserables.json", // placed in /client/public/
+      resetNetwork: null,
+      fullHeight: null, // check if 
+      graphSettings:{
+        // all settings must have following keys
+        // key : { minvalue: 0, value: 0.5, maxvalue: 1.0, valyeStep: 0.1, title: 'Link length' }
+      },
+      forceProperties: { // values for all forces
+        center:{  enabled: true, 
+                  params: {x: {value: 0.5,showSlider:false, min: 0, max: 1, step:0.1},
+                           y: {value: 0.5,showSlider:false, min: 0, max: 1, step:0.1}}
+        },
+        charge:{  enabled: true,
+                  params: { strength: {value:-30, showSlider: true, min: -100, max: 100, step:1},
+                         distanceMin: {value: 1,showSlider: false},
+                         distanceMax: {value: 300,showSlider: false}}
+        },
+        collide:{ enabled: false,
+                  params: {strength: {value:.7,  showSlider: true, min:0, max:2, step:0.1},
+                         iterations: {value: 1,  showSlider: false},
+                             radius: {value: 15, showSlider: true, min:0, max:100, step:1}}
+        },
+        link:{    enabled: true,
+                  params: {distance: {value: 30, showSlider: true, min: 0, max:100, step:1},
+                         iterations: {value: 1,  showSlider: false }}
+        },
+      },
+    };
+  },
+  props: {
+    parentFlatDoc: Array,
+    parentResetNetwork: Boolean,
+    parentTopicToTermsDictionary: Object,
+    parentShowPassages: Array,
+  },
+  components:{
+    toggleButton,
+    binaryButton,
+    simpleButton,
+    multipleButton,
+    VueSlider,
+    graphControls,
+  },
+  computed: {
+    // a computed getter
+    flatDoc(){
+      return this.parentFlatDoc;
+    },
+    sortedTopics() {
+      // sort by Object.keys(this.topicToTermsDictionary).sort();
+      var sortedTerms = Object.keys(this.topicToTermsDictionary).sort();
+      return sortedTerms;
+    },
+  },
+  watch: {
+    forceProperties: { handler: 'updateGraph', deep: true },
+    graphToLoad(){
+      this.startNetwork();
+    },
+    parentResetNetwork(){
+      this.resetNetwork = this.parentResetNetwork;
+    },
+    resetNetwork(){
+      if(this.resetNetwork === true){
+        console.log('RESTARTING NETWORK!')
+        this.startNetwork();
+        this.resetNetwork = false;
+        this.$emit('update-reset-network',this.resetNetwork);
+      }
+    },
+    /* fullHeight(){
+      console.log('fullHeight',this.fullHeight);
+    } */
+  },
+  ready: function () {
+    this.fullHeight = this.$refs.divGraph.clientHeight;
+  },
+  mounted() {
+    this.resetNetwork = this.parentResetNetwork;
+    //
+  },
+  methods: {
+    test(){
+      console.log('this.flatDoc',this.flatDoc);
+    },
+    zoomFit(paddingPercent, transitionDuration) {
+      //d3.event.transform',d3.event);//.transform);
+      var root = d3.select(".everything").node();
+      if(root === null || root === undefined) return false;
+      
+      var bounds = root.getBBox(); //.node().getBoundingClientRect();
+      var parent = root.parentElement;
+      var fullWidth = parent.clientWidth,
+          fullHeight = parent.clientHeight;
+
+      var width = bounds.width,
+          height = bounds.height;
+      var midX = bounds.x + width / 2,
+          midY = bounds.y + height / 2;
+      if (width == 0 || height == 0) return; // nothing to fit
+      var scale = (paddingPercent || 0.75) / Math.max(width / fullWidth, height / fullHeight);
+      var translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
+      
+      // This code looks like it works, but then using the mouse reverts to original
+      // zoom and skew. Likely because the zoom objects are not shared with main code
+      // see http://bl.ocks.org/TWiStErRob/b1c62730e01fe33baa2dea0d0aa29359
+      var root = d3.select(".everything")
+         .transition()
+         .duration(transitionDuration || 0) // milliseconds
+         .attr('transform',
+             'translate('+translate[0]+','+translate[1]+')'
+             +   ' scale(' + scale     + ')');
+      
+      //attr("transform", function(d) {
+      //  console.log("translate(" + (d.x + translate[0]) + "," + (d.y+translate[1]) + ")");
+        //return "translate(" + (d.x + translate[0]) + "," + (d.y+translate[1]) + ")"+' scale(' + scale     + ')'
+      //  return "translate(" + translate[0] + "," + translate[1] + ")" //+' scale(' + scale     + ')'
+      //});
+      
+      // FOLLOWING IS THE RIGHT WAY TO DO THINGS, BUT HAVE TO FIGURE OUT HOW TO 
+      // SHARE ZOOM OBJECT BEFORE BREAKING OTHER CODE
+      /*
+      // Build a new zoom transform (using d3.zoomIdentity as a base)
+      var transform = d3.zoomIdentity
+        .scale( scale ) 
+        .translate( translate );  
+      var root = d3.select(".everything")
+        .transition()
+        .duration(transitionDuration || 0) // milliseconds
+        .call(zoom.transform, transform);
+      */
+    },
+    loadTopics(){
+      var nodes = [];
+      var rels  = [];
+      var graph = {'links':[],'nodes':[]}
+      this.flatDoc.forEach((passage,pId)=>{
+        passage['pTerms'].forEach((term)=>{
+          //
+          const source = 'p'+pId;
+          const target = term['term']
+          const link = 'FoundIn'
+          // e.g. node: { "id": "Myriel", "group": 1 },
+          if(nodes.indexOf(source) === -1)  {
+            nodes.push(source);
+            graph['nodes'].push({'id':source,'group':2});
+          }
+          if(nodes.indexOf(target) === -1)  {
+            nodes.push(target);
+            graph['nodes'].push({'id':target,'group':1});
+          }
+          //
+          // e.g. link: { "source": "Mme.Hucheloup", "target": "Enjolras", "value": 1 }
+          //
+          var rel = (source,target);
+          if(rels.indexOf(rel) === -1)  {
+            rels.push(rel);
+            graph['links'].push({'source':source,'target':target,'weight':1});
+          }
+        });
+      });
+      return graph;
+    },
+    loadRels(){
+      var nodes = [];
+      var rels  = [];
+      var graph = {'links':[],'nodes':[]}
+      this.flatDoc.forEach((passage)=>{
+        if(passage['pRels'] !== undefined){
+          passage['pRels'].forEach((rel)=>{
+            const source = rel[0];
+            const link   = rel[1];
+            const target = rel[2];
+            // e.g. node: { "id": "Myriel", "group": 1 },
+            if(nodes.indexOf(source) === -1)  {
+              nodes.push(source);
+              graph['nodes'].push({'id':source,'group':1});
+            }
+            if(nodes.indexOf(target) === -1)  {
+              nodes.push(target);
+              graph['nodes'].push({'id':target,'group':1});
+            }
+            //
+            // e.g. link: { "source": "Mme.Hucheloup", "target": "Enjolras", "value": 1 }
+            //
+            var rel = (source,target);
+            if(rels.indexOf(rel) === -1)  {
+              rels.push(rel);
+              graph['links'].push({'source':source,'target':target,'weight':1});
+            }
+          });
+        }
+      });
+      console.log(graph);
+      var nodes = [];
+      var rels  = [];
+      var graph = {'links':[],'nodes':[]}
+      return graph;
+    },
+    returnGraphObject(){
+      //graphToLoadOptions: ['Rels','Terms','?'],
+      var _graph = {'links':[{"source":"Data", "target":"... not yet available", "value":10, "weight":1}],
+                   'nodes':[{"id":"Data","group":1},{"id":"... not yet available", "group":2}]}
+      //
+      if(this.graphToLoad === '<i class="fas fa-book"></i>'){ 
+        // DUMMY GRAPH for instruction purposes
+        _graph = exampleGraphObject; 
+        //this.loadRels();
+      } else if (this.graphToLoad === 'Rels'){
+        // LOADING RELS 
+        _graph = this.loadRels()
+      } else if (this.graphToLoad === 'Terms'){
+        //
+        _graph = this.loadTopics()
+      }
+
+      var graph = {'nodes':[],'links':[]};
+      if(true){
+        // ----------------------------------------------------------------
+        // Converting to Cytoscape, and calculating for a largest sub-component
+        
+        // declaring, then converting from JSON
+        var cy = cytoscape({});
+        _graph.nodes.forEach((n)=> cy.add({data: { type:'node', id: n.id, group: n.group }}) );
+        _graph.links.forEach((e)=> cy.add({data: { type:'edge', id: e.source+'--'+e.target, source: e.source, target: e.target } }) );
+        
+        // calculate components
+        var components = cy.elements().components();
+        
+        // Iterate through components
+        for(var componentIx = 0; componentIx < components.length; componentIx++){
+          if(graph['nodes'].length <= 200){
+            components[componentIx].each((e)=>{
+              var data = e.data();
+              if(data.type === 'node'){
+                graph['nodes'].push({"id":data.id,"group":componentIx+1})
+              } else {
+                graph['links'].push({"source":data.source,"target":data.target,value:10})
+              }
+            });
+          }
+        }
+
+        // ----------------------------------------------------------------
+        // Calculating communities
+        let nodesForLouvain = [];
+        graph['nodes'].forEach((n) => nodesForLouvain.push(n['id']) );
+
+        let community = jLouvain()
+          .nodes(nodesForLouvain)
+          .edges(graph['links']);
+        let result = community();
+        
+        graph['nodes'].forEach((n,ix) => {
+          graph['nodes'][ix]['group'] =  result[n.id];
+        });
+        // ----------------------------------------------------------------
+
+
+      } else {
+        graph = _graph;
+      }
+
+      
+
+      return graph; //this.loadRels()
+    },
+    updateGraph(){
+      this.updateDisplay();
+      this.updateForces();
+      // updates ignored until this is run
+      // restarts the simulation (important if simulation has already slowed down)
+      this.simulation.alpha(1).restart();
+    },
+    // update the display based on the forces (but not positions)
+    updateDisplay() {
+      this.node
+        //.attr("r", forceProperties.collide.radius)
+        .attr("r", this.forceProperties.collide.params.radius.value)
+        //.attr("stroke", this.forceProperties.charge.params.strength.value > 0 ? "blue" : "red")
+        //.attr("stroke-width", this.forceProperties.charge.enabled==false ? 0 : Math.abs(forceProperties.charge.strength)/15);
+      this.link
+        .attr("stroke-width", this.forceProperties.link.enabled ? 1 : .5)
+        .attr("opacity", this.forceProperties.link.enabled ? 1 : 0);
+    },
+    updateForces(){
+      var forceProperties = this.forceProperties;
+      // get each force by name and update the properties
+      this.simulation.force("center")
+          .x(this.width * forceProperties.center.params.x.value)
+          .y(this.height * forceProperties.center.params.y.value);
+      this.simulation.force("charge")
+          .strength(forceProperties.charge.params.strength.value * forceProperties.charge.enabled)
+          .distanceMin(forceProperties.charge.params.distanceMin.value)
+          .distanceMax(forceProperties.charge.params.distanceMax.value);
+      this.simulation.force("collide")
+          .strength(forceProperties.collide.params.strength.value * forceProperties.collide.enabled)
+          .radius(forceProperties.collide.params.radius.value)
+          .iterations(forceProperties.collide.params.iterations.value);
+      this.simulation.force("link")
+          .id(function(d) {return d.id;})
+          .distance(forceProperties.link.params.distance.value)
+          .iterations(forceProperties.link.params.iterations.value)
+          .links(forceProperties.link.enabled ? this.graph.links : []);
+
+      // background positive attraction so that orphan nodes and clusters don't fly away
+      this.simulation.force("centralGravity", d3.forceManyBody());
+      this.simulation.force("centralGravity")
+         .strength(Math.max([Math.abs(this.forceProperties.charge.params.strength.value)/2,10]))
+         //.strength(Math.abs(this.forceProperties.charge.params.strength.value)/2)
+         //.strength(5)
+         .distanceMin(this.forceProperties.charge.params.distanceMax.value+1)
+         .distanceMax(this.forceProperties.charge.params.distanceMax.value*10);
+    },
+    startNetwork() {
+      //var divheight = Math.min(JQuery("#divGraph").height(), JQuery("#divGraph").width());
+      //var divheight = this.$refs.divGraph.clientHeight);
+      //var graph; // the data - an object with nodes and links
+      var link, node; // svg objects
+      
+      this.graph = this.returnGraphObject();
+      
+      var targetHeight = JQuery("#divGraph").height() - JQuery("#divNonGraph").height();
+      var targetWidth  = JQuery("#divGraph").width();
+      this.width        = targetHeight;
+      this.height       = targetWidth;
+
+      if(targetHeight <=20 || targetWidth < 20){
+        // emit a message, if needed
+        var _error = 'Hosting div is too small to render the network';
+        console.log(_error)
+        return(_error)
+      }
+
+      JQuery("#graphSvg").empty();
+      JQuery("#graphSvg").attr("height", targetHeight);
+      JQuery("#graphSvg").attr("width", targetWidth);
+
+      this.root = d3.select("#graphSvg");
+      
+      var color = d3.scaleOrdinal(d3.schemeTableau10); //d3.schemeAccent);
+      //var color = d3.scaleSequential(d3.interpolatePiYG);
+      
+      // force simulator
+      this.simulation = d3.forceSimulation();
+
+      this.simulation.nodes(this.graph.nodes);
+
+      // initializing forces
+      this.simulation
+          .force("link", d3.forceLink())
+          .force("charge", d3.forceManyBody())
+          .force("collide", d3.forceCollide())
+          .force("center", d3.forceCenter());
+      //
+      this.updateForces();
+      //
+      //add encompassing group for the zoom
+      var g = this.root.append("g").attr("class", "everything");
+      //this.simulation.on("end", this.zoomFit(0.95, 500));
+      
+      //var jsonFn = "static/miserables.json";
+      //d3.json(this.jsonFn).then(function(graph) {
+        
+        //draw lines for the links
+        this.link = g
+          .append("g")
+          .attr("class", "links")
+          .selectAll("line")
+          .data(this.graph.links)
+          .enter()
+          .append("line")
+          .attr("stroke-width", function(d) {
+            return Math.sqrt(d.value);
+          })
+          .attr("stroke", "rgba(0,0,0,0.2)");
+
+        //draw circles for the nodes
+        this.node = g
+          .append("g")
+          .attr("class", "nodes")
+          .selectAll("circle")
+          .data(this.graph.nodes)
+          .enter()
+          .append("g");
+
+        var circles = this.node
+          .append("circle")
+          .attr("r", 5)
+          .attr("stroke","rgb(50,50,50)")
+          .attr("stroke-width",1)
+          .attr("fill", function(d) {
+            return color(d.group);
+          });
+        
+        this.lables = this.node
+          .append("text")
+          .text(function(d) {
+            return d.id;
+          })
+          .attr("font-family","sans-serif")
+          .attr("font-size","10px")
+          .attr("fill","rgba(0,0,0,0.7)")
+          .attr("x", 6)
+          .attr("y", 3);
+        
+        this.node.append("title").text(function(d) {
+          return d.id;
+        });
+
+        node = this.node;
+        link = this.link;
+
+        /*
+        //this.zoomFit(.95,500);
+        // =======================================================
+        // EXPERIMENTAL
+        var paddingPercent = .95;
+        var transitionDuration = 500;
+        //d3.event.transform',d3.event);//.transform);
+        var root = d3.select(".everything").node();
+        if(root === null || root === undefined) return false;
+        
+        var bounds = root.getBBox(); //.node().getBoundingClientRect();
+        var parent = root.parentElement;
+        var fullWidth = parent.clientWidth,
+            fullHeight = parent.clientHeight;
+
+        var width = bounds.width,
+            height = bounds.height;
+        var midX = bounds.x + width / 2,
+            midY = bounds.y + height / 2;
+        if (width == 0 || height == 0) return; // nothing to fit
+        var scale = (paddingPercent || 0.75) / Math.max(width / fullWidth, height / fullHeight);
+        var translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
+        
+        // This code looks like it works, but then using the mouse reverts to original
+        // zoom and skew. Likely because the zoom objects are not shared with main code
+        // see http://bl.ocks.org/TWiStErRob/b1c62730e01fe33baa2dea0d0aa29359
+        var root = d3.select(".everything")
+          .transition()
+          .duration(transitionDuration || 0) // milliseconds
+          .attr('transform',
+              'translate('+translate[0]+','+translate[1]+')'
+              +   'scale(' + scale     + ')');
+        // END EXPERIMENT
+        // =======================================================
+        */
+
+
+
+        
+        //this.simulation.on("tick", ticked);
+        this.simulation.nodes(this.graph.nodes).on("tick", ticked);
+        //this.simulation.force("link").links(graph.links);
+        
+        function ticked() {
+          link
+            .attr("x1", function(d) {
+              return d.source.x;
+            })
+            .attr("y1", function(d) {
+              return d.source.y;
+            })
+            .attr("x2", function(d) {
+              return d.target.x;
+            })
+            .attr("y2", function(d) {
+              return d.target.y;
+            });
+          
+          node.attr("transform", function(d) {
+              return "translate(" + d.x + "," + d.y + ")";
+            }); 
+        }
+
+        var zoom_handler = d3.zoom().on("zoom", zoom_actions);
+        zoom_handler(this.root);
+
+        function zoom_actions() {
+          //console.log('d3.event.transform',d3.event.transform);
+          g.attr("transform", d3.event.transform);
+        }
+
+        //-----------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------
+        var drag_handler = d3
+          .drag()
+          .on("start", drag_start)
+          .on("drag", drag_drag)
+          .on("end", drag_end);
+
+        //same as using .call on the node variable as in https://bl.ocks.org/mbostock/4062045
+        drag_handler(this.node);
+        //drag handler
+        //d is the node
+        var simulation = this.simulation;
+        function drag_start(d) {
+          if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+          d.fx = d.x;
+          d.fy = d.y;
+        }
+        function drag_drag(d) {
+          d.fx = d3.event.x;
+          d.fy = d3.event.y;
+        }
+        function drag_end(d) {
+          if (!d3.event.active) simulation.alphaTarget(0);
+          d.fx = d.x;
+          d.fy = d.y;
+        }
+        //-----------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------
+      //});
+      /*
+      function computeReadability () {
+        var nodes = this.simulation.nodes();
+        var links = this.simulation.force("link").links();
+        //console.log(greadability.greadability(nodes, links));
+      }
+      */
+    },
+  },
+};
+</script>
+
+<!-- Add 'scoped' attribute to limit CSS to this component only -->
+<style lang='scss'>
+//@import '../../assets/css/template_crunch.scss';
+@import '../../assets/css/vue-transition.css';
+
+</style>

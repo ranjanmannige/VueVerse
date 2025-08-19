@@ -1,0 +1,56 @@
+/*
+Error: $color: "var(--color-fiord)" is not a color for `rgba'
+        on line 47 of /home/ranjan/Documents/projects/crunch/client/src/assets/css/template_crunch.scss
+
+42: //$tmp-color-fiord: rgba(var(--color-fiord)); //rgba(255,0,0,1);// rgba(var(--color-fiord),1);
+43: //$color-fiord:     #{rgb(var(--color-fiord))}; //ie_hex_str($tmp-color-fiord);
+44: //$color-fiord-raw: var(--color-fiord); //ie_hex_str($tmp-color-fiord);
+45: 
+46: //$color-fiord:var(--color-fiord); // #333; // main section header bg
+47: $color-fiord: rgba(var(--color-fiord),1);
+48: $color-fiord-raw: var(--color-fiord);
+49: $shadow: 0px 0px 7px lighten($color-text, 50%);
+50: 
+51: 
+52: //rgba(var(--color-fiord)): rgba(var(--color-fiord));
+
+Backtrace:
+/home/ranjan/Documents/projects/crunch/client/src/assets/css/template_crunch.scss:47
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/script/tree/funcall.rb:315:in `reformat_argument_error'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/script/tree/funcall.rb:162:in `rescue in _perform'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/script/tree/funcall.rb:131:in `_perform'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/script/tree/node.rb:50:in `perform'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/perform.rb:482:in `visit_variable'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/base.rb:36:in `visit'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/perform.rb:162:in `block in visit'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/stack.rb:79:in `block in with_base'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/stack.rb:135:in `with_frame'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/stack.rb:79:in `with_base'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/perform.rb:162:in `visit'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/base.rb:52:in `block in visit_children'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/base.rb:52:in `map'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/base.rb:52:in `visit_children'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/perform.rb:171:in `block in visit_children'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/perform.rb:183:in `with_environment'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/perform.rb:170:in `visit_children'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/base.rb:36:in `block in visit'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/perform.rb:190:in `visit_root'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/base.rb:36:in `visit'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/perform.rb:161:in `visit'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/visitors/perform.rb:10:in `visit'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/root_node.rb:36:in `css_tree'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/tree/root_node.rb:29:in `render_with_sourcemap'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/engine.rb:389:in `_render_with_sourcemap'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/engine.rb:307:in `render_with_sourcemap'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/exec/sass_scss.rb:391:in `run'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/exec/sass_scss.rb:63:in `process_result'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/exec/base.rb:52:in `parse'
+/usr/share/koala/rubygems/gems/sass-3.5.2/lib/sass/exec/base.rb:19:in `parse!'
+/usr/share/koala/rubygems/gems/sass-3.5.2/bin/sass:13:in `<top (required)>'
+/usr/share/koala/bin/sass:22:in `load'
+/usr/share/koala/bin/sass:22:in `<main>'
+*/
+body:before {
+  white-space: pre;
+  font-family: monospace;
+  content: "Error: $color: \"var(--color-fiord)\" is not a color for `rgba'\A         on line 47 of /home/ranjan/Documents/projects/crunch/client/src/assets/css/template_crunch.scss\A \A 42: //$tmp-color-fiord: rgba(var(--color-fiord)); //rgba(255,0,0,1);// rgba(var(--color-fiord),1);\A 43: //$color-fiord:     #{rgb(var(--color-fiord))}; //ie_hex_str($tmp-color-fiord);\A 44: //$color-fiord-raw: var(--color-fiord); //ie_hex_str($tmp-color-fiord);\A 45: \A 46: //$color-fiord:var(--color-fiord); // #333; // main section header bg\A 47: $color-fiord: rgba(var(--color-fiord),1);\A 48: $color-fiord-raw: var(--color-fiord);\A 49: $shadow: 0px 0px 7px lighten($color-text, 50%);\A 50: \A 51: \A 52: //rgba(var(--color-fiord)): rgba(var(--color-fiord));"; }

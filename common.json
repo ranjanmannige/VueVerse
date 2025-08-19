@@ -1,0 +1,15 @@
+{
+    "production":false,
+    "_production_explanation":"true=production, false=development",
+    "uri": "http://192.168.86.195",      
+    "_uri_example": "http://127.0.0.1",
+    "serverPort": "5050",            
+    "_serverPort_example":"5000; this is not used in production",
+    "clientPort": "5000",           
+    "_clientPort_example": "8080",
+    "clientURI":"http://localhost", 
+    "companyName": "AwesomeCompany",
+    "companyNameVerb": "AwesomeCompany",
+    "companyNamePossesive": "AwesomeCompany's",
+    "themeColors": ["#0889b1", "#0079c1", "#f4511e", "#ff4c4c", "#5e67ec", "#00a79b"]
+}
