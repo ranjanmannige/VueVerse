@@ -31,13 +31,15 @@ Copying and pasting a legitimate app directory (containing a legitimate `main.vu
    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
    # This ensures that nvm will be found
    source ~/.bashrc
-   # Install the latest npm using nvm
+   # Install the latest node package manager (NPM) using NVM
    nvm install --latest-npm
    # cd to this project directory and enter:
    npm install
    ```
 - **Running.**
     ```sh
+    # Loading the stable NPM from NVM
+    npm use stable
     # Compile and Hot-Reload for Development
     npm run dev
     # Compile and Minify for Production
