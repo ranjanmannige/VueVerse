@@ -100,7 +100,7 @@
         <div title="Toggle button text" style='display:inline-block; margin-left:3px; cursor:pointer;'
               class='lightbutton lightbutton__on'
               v-on:click="test()">
-          <span  class='clickme'><i class="fi-shield"></i></span>
+          <span  class='clickme'><i class="fas fa-bug"></i></span>
           <transition name="fade">
             <span v-if="menuShowLongFormButtons">
             Debug

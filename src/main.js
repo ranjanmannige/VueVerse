@@ -35,7 +35,7 @@ document.title = global.$commonvariables.companyNamePossesive + ' Apps';
 app.use(router)
 
 import '@/assets/main.css'
-import '@/assets/foundation-icons/foundation-icons.css';
+//import '@/assets/foundation-icons/foundation-icons.css';
 //import '@/assets/fontawesome-free-5.13.0-web/css/all.min.css';
 //import '@/assets/fontawesome-free-7.0.0-web/css/all.min.css';
 

@@ -3,8 +3,8 @@
     <div class='card-fixed'>
       <binaryButton v-bind:controllingVariable="expandAllSections"
                     v-on:update-controller="expandAllSections = $event"
-                    contentOn='<i class="fi-arrows-out"></i>'
-                    contentOff='<i class="fi-arrows-compress"></i>'
+                    contentOn='<i class="fas fa-maximize"></i>'
+                    contentOff='<i class="fas fa-compress-arrows-alt"></i>'
                     titleOn='Show all terms'
                     titleOff='Collapse all terms'
                     >
